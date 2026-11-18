@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG 檢索增強生成入門</title>
+<style>
+:root { color-scheme: light; background: #f5f7f5; color: #172b2a; }
+body { margin: 0 auto; max-width: 54rem; padding: 1rem; font: 1.05rem/1.75 system-ui, sans-serif; }
+header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem; }
+h1 { font-size: clamp(1.45rem, 4vw, 2.1rem); line-height: 1.3; }
+nav { display: flex; gap: 1rem; }
+a { color: #075c51; text-underline-offset: .18em; }
+a:focus-visible { outline: 2px solid #075c51; outline-offset: 3px; }
+article { margin: 1rem 0; padding: clamp(1rem, 3vw, 2rem); background: #fff;
+  border: 1px solid #d3ded9; border-radius: .65rem; scroll-margin-top: 1rem; overflow-wrap: anywhere; }
+article:target { border-color: #075c51; }
+h2 { margin-top: 0; }
+li + li { margin-top: .35rem; }
+</style>
+</head>
+<body>
+<header id="top">
+  <h1>RAG 檢索增強生成入門</h1>
+  <nav aria-label="Wiki 導覽">
+    <a href="#index">知識索引</a>
+    <a href="#log">維護紀錄</a>
+    <a href="wiki/index.md">Markdown</a>
+  </nav>
+</header>
+<main>
+<article id="index">
+<h2>RAG 檢索增強生成入門</h2>
+<p>想知道 LLM 如何借助外部資料回答問題，可以依序閱讀下列概念。各條目中的 S01–S05 連到來源摘要，摘要提供原文連結與章節位置。</p>
+<h3>核心概念</h3>
+<ul>
+<li><a href="#concepts-rag">RAG 定義</a> · 把外部證據帶進生成流程</li>
+<li><a href="#concepts-llm-limits">LLM 的限制</a> · 理解模型為何需要外部資料</li>
+<li><a href="#concepts-flow">RAG 運作流程</a> · 從準備文件到回答問題</li>
+<li><a href="#concepts-chunking">Chunking（文件切分）</a> · 選擇適合檢索的片段大小</li>
+<li><a href="#concepts-embedding">Embedding（嵌入向量）</a> · 把查詢與片段轉成可比較的表示</li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a> · 理解候選排序與混合搜尋</li>
+<li><a href="#concepts-generation">Generation（生成）</a> · 讓模型根據取回的內容作答</li>
+<li><a href="#concepts-applications">RAG 的應用</a> · 從客服到文件問答</li>
+<li><a href="#concepts-limits">RAG 的限制</a> · 從檢索、生成與營運找出失敗點</li>
+</ul>
+<h3>來源摘要</h3>
+<ul>
+<li><a href="#sources-S01">S01 · Lewis 等人的 RAG 原始論文</a></li>
+<li><a href="#sources-S02">S02 · Gao 等人的 RAG 綜述</a></li>
+<li><a href="#sources-S03">S03 · IBM Think 的 RAG 入門</a></li>
+<li><a href="#sources-S04">S04 · AWS 的 RAG 入門</a></li>
+<li><a href="#sources-S05">S05 · Microsoft Learn 的 RAG 指南</a></li>
+</ul>
+<h3>維護紀錄</h3>
+<ul>
+<li><a href="#log">Ingest 與修改紀錄</a></li>
+<li><a href="workflow/requirements.md">流程與需求</a></li>
+</ul>
+</article>
+<article id="concepts-applications">
+<h2>RAG 的應用</h2>
+<ul>
+<li><strong>組織內部問答</strong>。例如員工詢問休假規則時，系統檢索相關政策和經授權的個人紀錄，再將結果交給模型。 <a href="#sources-S04">S04「Retrieve relevant information」與「More developer control」</a></li>
+<li><strong>客服知識助理</strong>。從產品說明及政策中尋找支援內容，由模型整理成回覆。 <a href="#sources-S03">S03「Specialized chatbots and virtual assistants」</a></li>
+<li><strong>知識密集的 NLP 任務</strong>。原始論文測試開放域問答與事實查核。綜述也列出資訊擷取和對話生成等任務。 <a href="#sources-S01">S01 §§3.1、3.4</a> · <a href="#sources-S02">S02 §VI-A</a></li>
+</ul>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-rag">RAG 定義</a></li>
+<li><a href="#concepts-flow">RAG 運作流程</a></li>
+<li><a href="#concepts-limits">RAG 的限制</a></li>
+</ul>
+</article>
+<article id="concepts-chunking">
+<h2>Chunking（文件切分）</h2>
+<p>Chunking 把長文件切成可獨立搜尋的片段。切分可依 token 數、句子或其他適合文件結構的邊界。切得太小容易遺失前後文，太大則可能混入無關內容並占用更多輸入空間。 <a href="#sources-S02">S02 §III-B.1</a> · <a href="#sources-S03">S03「The knowledge base」</a></p>
+<p>可以保留文件名稱、頁碼與日期等 Metadata（中繼資料），以便限制搜尋範圍及回查片段位置。 <a href="#sources-S02">S02 §III-B.2</a></p>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-flow">RAG 運作流程</a></li>
+<li><a href="#concepts-embedding">Embedding（嵌入向量）</a></li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a></li>
+</ul>
+</article>
+<article id="concepts-embedding">
+<h2>Embedding（嵌入向量）</h2>
+<p>Embedding 是模型產生的一組數值，可用來比較內容的相似程度。例如，提問「剩幾天特休？」與條文「年度休假餘額」的字面不完全相同，向量搜尋仍可以把它們列為可能相關的內容。這是依向量檢索原理設計的教學例子。 <a href="#sources-S03">S03「The retriever」</a> · <a href="#sources-S05">S05「Solving query understanding challenges」</a></p>
+<p>原始 RAG 論文使用 DPR 的查詢編碼器和文件編碼器產生向量，再以內積比較。索引中的向量用來找候選片段，之後提供給生成模型的是片段內容。 <a href="#sources-S01">S01 §§2.2–2.3</a></p>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-chunking">Chunking（文件切分）</a></li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a></li>
+</ul>
+</article>
+<article id="concepts-flow">
+<h2>RAG 運作流程</h2>
+<h3>建立索引（Indexing）</h3>
+<p>先整理外部文件，視需求將全文切成片段，建立可搜尋的索引。向量式流程會先為每個片段建立 Embedding。 <a href="#sources-S02">S02 §II-A</a> · <a href="#sources-S05">S05「Content preparation for RAG」</a></p>
+<h3>回答問題</h3>
+<ul>
+<li><strong>Retrieval（檢索）</strong>。使用問題搜尋索引，取回候選片段。 <a href="#sources-S02">S02 §II-A</a></li>
+<li><strong>Augmentation（增強）</strong>。選擇需要的片段，將問題和片段組成模型的輸入。 <a href="#sources-S03">S03「The integration layer」</a></li>
+<li><strong>Generation（生成）</strong>。模型根據輸入撰寫回答，應用可以附上引用。 <a href="#sources-S03">S03「The generator」</a> · <a href="#sources-S04">S04「Enhanced user trust」</a></li>
+</ul>
+<p>外部資料有變更時，索引也要反映更新。一個過期的索引仍可能把舊資料交給生成器。 <a href="#sources-S04">S04「Update external data」</a></p>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-chunking">Chunking（文件切分）</a></li>
+<li><a href="#concepts-embedding">Embedding（嵌入向量）</a></li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a></li>
+<li><a href="#concepts-generation">Generation（生成）</a></li>
+</ul>
+</article>
+<article id="concepts-generation">
+<h2>Generation（生成）</h2>
+<p>生成階段將問題與選出的片段交給 LLM，形成 Augmented Prompt（增強提示）。例如詢問退選期限時，模型可用取回的條文組織答案，應用可保留條文的連結供查核。 <a href="#sources-S03">S03「The integration layer」與「The generator」</a> · <a href="#sources-S04">S04「Enhanced user trust」</a></p>
+<p>候選太多可能稀釋關鍵資訊。生成前可透過 Reranking、片段篩選或壓縮，決定哪些證據送入模型。檢查輸出時，可以分別看 Answer Relevance（回答是否切題）與 Faithfulness（回答是否忠實於提供的證據）。 <a href="#sources-S02">S02 §§IV-A、VI-C.1</a></p>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-flow">RAG 運作流程</a></li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a></li>
+<li><a href="#concepts-limits">RAG 的限制</a></li>
+</ul>
+</article>
+<article id="concepts-limits">
+<h2>RAG 的限制</h2>
+<ul>
+<li><strong>檢索品質</strong>。索引可能漏掉關鍵證據，或回傳錯誤、冗餘及互相矛盾的內容。 <a href="#sources-S02">S02 §§III-B、VII-B</a></li>
+<li><strong>生成忠實性</strong>。檢索到片段後，仍需評估回答中的主張是否得到這些片段支持。 <a href="#sources-S02">S02 §VI-C.1</a></li>
+<li><strong>維護與權限</strong>。更新文件後需要同步維護索引，私人文件的檢索須依使用者權限控制，並在速度與搜尋深度間取捨。 <a href="#sources-S04">S04「Update external data」</a> · <a href="#sources-S05">S05「The challenges of RAG」</a></li>
+</ul>
+<h3>來源觀察差異</h3>
+<ul>
+<li><a href="#sources-S02">S02 §§IV-A、VII-B</a> 提醒冗餘或矛盾資料可能有害，也轉述特定研究中加入無關資料意外提升準確率的結果。</li>
+<li><a href="#sources-S05">S05「Solving token constraint challenges」</a> 在其產品情境強調回傳少量高相關片段與限制結果數量。</li>
+</ul>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-llm-limits">LLM 的限制</a></li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a></li>
+<li><a href="#concepts-generation">Generation（生成）</a></li>
+</ul>
+</article>
+<article id="concepts-llm-limits">
+<h2>LLM 的限制</h2>
+<p>大型語言模型（LLM）把訓練中學到的知識存於參數。知識會受訓練資料範圍與時間限制，回答可能過時或欠缺領域細節。模型也可能產生看似合理的錯誤內容（Hallucination），而單靠回答文字難以追溯資訊來自哪裡。 <a href="#sources-S01">S01 §1</a> · <a href="#sources-S04">S04「Why is Retrieval-Augmented Generation important?」</a></p>
+<p>LLM 一次能處理的輸入有 Context Window（上下文視窗）限制。檢索系統因此需要從大量文件中挑選與問題相關的內容。 <a href="#sources-S03">S03「The knowledge base」</a> · <a href="#sources-S05">S05「The challenges of RAG」</a></p>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-rag">RAG 定義</a></li>
+<li><a href="#concepts-limits">RAG 的限制</a></li>
+</ul>
+</article>
+<article id="concepts-rag">
+<h2>RAG 定義</h2>
+<p>RAG（Retrieval-Augmented Generation，檢索增強生成）讓生成模型在回答時使用檢索到的外部資料。以校內規章為例，系統先找出和「退選期限」有關的條文，再讓模型根據條文回答。這是依流程設計的教學例子。 <a href="#sources-S02">S02 §II-A</a> · <a href="#sources-S03">S03「How does RAG work?」</a></p>
+<h3>來源的用法差異</h3>
+<ul>
+<li><a href="#sources-S01">S01 §§1、2.4</a> 的 RAG 是一套特定的端到端訓練架構，將預訓練生成器與 Wikipedia 段落索引結合。</li>
+<li><a href="#sources-S03">S03「What is the difference between RAG and fine-tuning?」</a> 以系統整合為主，說明既有模型可於推論時使用外部知識，也可搭配 Fine-tuning。</li>
+</ul>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-llm-limits">LLM 的限制</a></li>
+<li><a href="#concepts-flow">RAG 運作流程</a></li>
+</ul>
+</article>
+<article id="concepts-retrieval">
+<h2>Retrieval（檢索）</h2>
+<p>Retriever 從知識庫找回與問題相關的候選。例如向量搜尋可依相似度取前 k 筆（Top-k）。初步取回的候選也可以透過 Reranking（重新排序）再按相關性排列。 <a href="#sources-S02">S02 §§II-A、IV-A.1</a> · <a href="#sources-S03">S03「The retriever」</a></p>
+<h3>來源的比較條件</h3>
+<ul>
+<li><a href="#sources-S04">S04「What is the difference between Retrieval-Augmented Generation and semantic search?」</a> 認為只用傳統關鍵字搜尋，在知識密集任務中的效果有限。</li>
+<li><a href="#sources-S01">S01 §4.5 Retrieval Ablations</a> 在 FEVER 實驗裡觀察到 BM25 表現較佳，並指出該組聲明高度集中於實體名稱。論文中其他任務則是可學習的檢索器表現較好。</li>
+<li><a href="#sources-S05">S05「Maximize relevance and recall」</a> 在其產品情境建議 Hybrid Search（混合搜尋），合併關鍵字與向量搜尋的結果。</li>
+</ul>
+<h3>延伸閱讀</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-embedding">Embedding（嵌入向量）</a></li>
+<li><a href="#concepts-generation">Generation（生成）</a></li>
+<li><a href="#concepts-limits">RAG 的限制</a></li>
+</ul>
+</article>
+<article id="sources-S01">
+<h2>S01 · Lewis 等人的 RAG 原始論文</h2>
+<ul>
+<li><a href="https://arxiv.org/abs/2005.11401">原始文件</a></li>
+<li><a href="https://arxiv.org/html/2005.11401v4">閱讀版本 v4 全文</a></li>
+<li>Ingest 狀態：完成</li>
+</ul>
+<h3>摘要與定位</h3>
+<ul>
+<li>S01 §1 Introduction。作者把生成模型參數中的知識和可替換的 Wikipedia 段落索引結合，讓模型在生成時使用外部資料。</li>
+<li>S01 §§2.1–2.4 Methods。DPR 將查詢與段落編碼成向量，用內積找候選，BART 以輸入與取回的段落為條件生成。RAG-Sequence 在序列層級對候選文件作邊際化，RAG-Token 則在每個 token 層級作邊際化。訓練時更新查詢編碼器及生成器，固定文件編碼器與索引。</li>
+<li>S01 §§4.1、4.5 Results。作者比較開放域問答表現，並在指定實驗中展示可於測試時換用不同年份的 Wikipedia 索引。</li>
+</ul>
+<h3>相關概念</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-rag">RAG 定義</a></li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a></li>
+</ul>
+</article>
+<article id="sources-S02">
+<h2>S02 · Gao 等人的 RAG 綜述</h2>
+<ul>
+<li><a href="https://arxiv.org/abs/2312.10997">原始文件</a></li>
+<li><a href="https://arxiv.org/html/2312.10997v5">閱讀版本 v5 全文</a></li>
+<li>Ingest 狀態：完成</li>
+</ul>
+<h3>摘要與定位</h3>
+<ul>
+<li>S02 §II Overview of RAG。作者把 Naive RAG 拆為索引、檢索、生成，另介紹 Advanced RAG 與 Modular RAG 如何加入前後處理及可重組的模組。</li>
+<li>S02 §§III-B、III-D Retrieval。切分方式影響語意完整性和雜訊，檢索也可結合詞彙與向量訊號。</li>
+<li>S02 §IV-A Context Curation。重新排序或壓縮候選片段可減少送入模型的冗餘內容。</li>
+<li>S02 §§VI-A、VI-C、VII-B。綜述列出問答等任務，並討論上下文相關性、回答忠實性與系統面對雜訊或矛盾證據的能力。</li>
+</ul>
+<h3>相關概念</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-flow">RAG 運作流程</a></li>
+<li><a href="#concepts-limits">RAG 的限制</a></li>
+</ul>
+</article>
+<article id="sources-S03">
+<h2>S03 · IBM Think 的 RAG 入門</h2>
+<ul>
+<li><a href="https://www.ibm.com/think/topics/retrieval-augmented-generation">原始文件</a></li>
+<li>Ingest 狀態：完成</li>
+</ul>
+<h3>摘要與定位</h3>
+<ul>
+<li>S03「What is retrieval augmented generation (RAG)?」。IBM 從應用架構切入，說明如何讓模型取得訓練內容以外的機構或領域知識。</li>
+<li>S03「How does RAG work?」與「Components of a RAG system」。使用者提問後，retriever 找出資料，integration layer 組合 prompt，再由 generator 回答。知識庫小節說明 Chunking 過粗或過細的取捨。</li>
+<li>S03「RAG use cases」。文章以客服、內部知識查詢和研究說明領域資料如何支援對話式問答。</li>
+</ul>
+<h3>相關概念</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-chunking">Chunking（文件切分）</a></li>
+<li><a href="#concepts-applications">RAG 的應用</a></li>
+</ul>
+</article>
+<article id="sources-S04">
+<h2>S04 · AWS 的 RAG 入門</h2>
+<ul>
+<li><a href="https://aws.amazon.com/what-is/retrieval-augmented-generation/">原始文件</a></li>
+<li>Ingest 狀態：完成</li>
+</ul>
+<h3>摘要與定位</h3>
+<ul>
+<li>S04「Why is Retrieval-Augmented Generation important?」。AWS 說明模型可能提供過時、錯誤或過於籠統的答案。</li>
+<li>S04「How does Retrieval-Augmented Generation work?」。文章以查詢向量比對文件向量為例，再把取回資料加入 prompt。外部文件變動後，索引中的表示也需要更新。</li>
+<li>S04「What are the benefits of Retrieval-Augmented Generation?」。文章談到引用原文及依權限限制可檢索內容。</li>
+</ul>
+<h3>相關概念</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-flow">RAG 運作流程</a></li>
+<li><a href="#concepts-applications">RAG 的應用</a></li>
+</ul>
+</article>
+<article id="sources-S05">
+<h2>S05 · Microsoft Learn 的 RAG 指南</h2>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview">原始文件</a></li>
+<li>Ingest 狀態：完成</li>
+</ul>
+<h3>摘要與定位</h3>
+<ul>
+<li>S05「The challenges of RAG」。企業場景須處理跨資料源、輸入 token 預算、延遲及存取權限。</li>
+<li>S05「Modern RAG with agentic retrieval」與「Classic RAG pattern for Foundry IQ」。前者可拆分複雜查詢並行檢索，後者由應用送出單次查詢並自行將結果交給模型。</li>
+<li>S05「Content preparation for RAG」與「Maximize relevance and recall」。文件指出可用文字切分、向量化、混合查詢及語意排序改善取回內容。</li>
+</ul>
+<h3>相關概念</h3>
+<ul>
+<li><a href="#index">回 Wiki 索引</a></li>
+<li><a href="#concepts-retrieval">Retrieval（檢索）</a></li>
+<li><a href="#concepts-limits">RAG 的限制</a></li>
+</ul>
+</article>
+<article id="log">
+<h2>Ingest 與修改紀錄</h2>
+<h3>2026-11-18 · 逐篇 ingest</h3>
+<ul>
+<li><a href="#sources-S01">S01</a> 完成。閱讀 arXiv v4 的 HTML 正文，記下模型架構、訓練及實驗章節，另保存本機 PDF。</li>
+<li><a href="#sources-S02">S02</a> 完成。閱讀 arXiv v5 的 HTML 正文，記下 RAG 分類、各階段優化、評估及限制，另保存本機 PDF。</li>
+<li><a href="#sources-S03">S03</a> 完成。閱讀 IBM Think 正文，整理架構角色、切分取捨與應用。</li>
+<li><a href="#sources-S04">S04</a> 完成。閱讀 AWS 正文，整理 LLM 限制、典型流程、出處及索引更新。</li>
+<li><a href="#sources-S05">S05</a> 完成。閱讀 Microsoft Learn 正文，整理 classic 與 agentic retrieval 以及內容準備。原始 Markdown 回傳 404，正式 HTML 本機下載經重試成功。詳見<a href="raw/README.md">來源清冊</a>。</li>
+</ul>
+<h3>2026-11-18 · 跨來源整合與呈現</h3>
+<ul>
+<li>五篇摘要完成後，新增九篇<a href="#index">核心概念</a>，並為來源摘要加入相關概念連結。</li>
+<li>在 <a href="#concepts-rag">RAG 定義</a> 標明術語使用範圍，在 <a href="#concepts-retrieval">Retrieval</a> 與 <a href="#concepts-limits">RAG 的限制</a> 並列不同來源的描述與適用情境。</li>
+<li>從 Markdown 產生 <a href="#index">HTML Wiki</a>，執行結果另見<a href="workflow/report.md">檢查報告</a>。</li>
+</ul>
+</article>
+</main>
+<footer><a href="#top">回頁首</a></footer>
+<script>
+  // When following a Wiki link, move keyboard focus to the selected article.
+  function focusArticle() {
+    const article = document.getElementById(location.hash.slice(1));
+    if (article?.matches('article')) {
+      article.tabIndex = -1;
+      article.focus({ preventScroll: true });
+    }
+  }
+  window.addEventListener('hashchange', focusArticle);
+  focusArticle();
+</script>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG 是什麼？讓 AI 學會先查資料再回答</title>
+<style>
+:root {
+  color-scheme: light;
+  font-family: "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  color: #242620;
+  background: #ebe8df;
+  --paper: #fcfaf4;
+  --ink: #242620;
+  --muted: #53574d;
+  --line: #cfcbbd;
+  --accent: #8c3a24;
+  --serif: Georgia, "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.shell { width: min(100% - 2rem, 74rem); margin: auto; }
+.top, .controls { display: flex; align-items: center; gap: .85rem; min-height: 3.5rem; }
+.top { justify-content: space-between; font-size: .875rem; }
+a { color: var(--muted); text-underline-offset: .24em; }
+a:hover { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+section {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: min(75vh, 45rem);
+  align-items: start;
+  padding: clamp(1.35rem, 4.5vw, 4rem) clamp(1.35rem, 5.2vw, 5rem) clamp(1rem, 3vw, 2.1rem);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--ink);
+  overflow-wrap: anywhere;
+}
+section[hidden] { display: none; }
+section h1, section h2 {
+  font-family: var(--serif);
+  line-height: 1.18;
+  margin: 0 0 clamp(1.3rem, 3.7vw, 3.25rem);
+  text-wrap: balance;
+}
+section h1 { font-size: clamp(2.05rem, 5.7vw, 5.15rem); }
+section h2 { font-size: clamp(1.8rem, 4.4vw, 3.55rem); }
+.intro { border-top-color: var(--accent); }
+.intro h1 { max-width: 12em; }
+.intro h1 .cover-line { display: block; color: var(--accent); }
+.body {
+  margin: 0;
+  padding-inline-start: 1.15em;
+  max-width: 39em;
+  font-size: clamp(1.04rem, 2vw, 1.57rem);
+  line-height: 1.63;
+}
+.body li + li { margin-top: .5em; }
+.body li::marker { color: var(--accent); }
+.label { color: var(--accent); font-weight: 700; }
+.compare .body {
+  list-style: none;
+  padding: 0;
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.35rem, 4vw, 3.6rem);
+}
+.compare .body li {
+  margin: 0;
+  padding-top: .85rem;
+  border-top: 2px solid var(--ink);
+}
+.compare .body li + li { border-top-color: var(--accent); }
+.compare .label { display: block; margin-bottom: .38rem; font-size: 1.08em; }
+.compare .divider { font-size: 0; }
+.flow .body { max-width: none; padding-inline-start: 1.4em; }
+.flow .body li {
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  padding: .35rem 0 .35rem .25rem;
+}
+.flow .body li:last-child { border: 0; }
+.summary .body { font-weight: 600; }
+.references {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.15rem;
+  row-gap: .3rem;
+  border-top: 1px solid var(--line);
+  padding-top: .7rem;
+  margin-top: clamp(1.15rem, 2.5vw, 2rem);
+  font-size: .8rem;
+  line-height: 1.43;
+}
+.controls { justify-content: center; }
+button {
+  font: inherit;
+  font-size: .875rem;
+  background: transparent;
+  border: 1px solid #929383;
+  color: var(--ink);
+  padding: .35rem .85rem;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+#counter { min-width: 6ch; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 620px) {
+  .shell { width: calc(100% - 1.25rem); }
+  section { min-height: min(70vh, 36rem); }
+  .compare .body { grid-template-columns: 1fr; gap: 1.1rem; }
+  .references { font-size: .75rem; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="top" aria-label="專案連結"><a href="index.html">專案首頁</a><a href="wiki.html">LLM Wiki</a></nav>
+  <main aria-label="RAG 教學簡報">
+  <section data-slide="1" class="intro" aria-labelledby="title-1">
+    <h1 id="title-1" tabindex="-1" data-field="title">RAG 是什麼？<span class="cover-line">讓 AI 學會先查資料再回答</span></h1>
+    <ul class="body">
+      <li data-field="body">認識 RAG 如何把外部資料帶進回答。</li>
+      <li data-field="body">看懂資料如何建立索引，又如何被找回。</li>
+      <li data-field="body">練習判斷答案是否有證據支持。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-rag">S02 §II-A</a>
+      <a data-field="citation" href="wiki.html#concepts-flow">S02 §II-A</a>
+      <a data-field="citation" href="wiki.html#concepts-limits">S02 §VI-C.1</a>
+    </div>
+  </section>
+  <section data-slide="2" class="list" aria-labelledby="title-2" hidden>
+    <h2 id="title-2" tabindex="-1" data-field="title">為什麼 LLM 需要 RAG</h2>
+    <ul class="body">
+      <li data-field="body">LLM 的知識來自訓練。遇到新資訊或專門規章，回答可能過時、缺少細節，或出現看似合理的錯誤（Hallucination）。</li>
+      <li data-field="body">上下文視窗（Context Window）限制一次可處理的輸入量，系統需要挑選相關內容。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-llm-limits">S01 §1</a>
+      <a data-field="citation" href="wiki.html#concepts-llm-limits">S04「Why is Retrieval-Augmented Generation important?」</a>
+      <a data-field="citation" href="wiki.html#concepts-llm-limits">S05「The challenges of RAG」</a>
+    </div>
+  </section>
+  <section data-slide="3" class="list" aria-labelledby="title-3" hidden>
+    <h2 id="title-3" tabindex="-1" data-field="title">RAG 的基本概念</h2>
+    <ul class="body">
+      <li data-field="body">檢索增強生成（Retrieval-Augmented Generation）讓模型在回答時使用找回的外部資料。這裡的「先查」指回答時取用資料。</li>
+      <li data-field="body"><strong class="label">教學例子</strong><span class="divider">｜</span>問「退選期限是什麼時候？」系統先找校內規章的相關條文，再交給模型整理答案。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-rag">S02 §II-A</a>
+    </div>
+  </section>
+  <section data-slide="4" class="compare" aria-labelledby="title-4" hidden>
+    <h2 id="title-4" tabindex="-1" data-field="title">一般 LLM 與 RAG 的差異</h2>
+    <ul class="body">
+      <li data-field="body"><strong class="label">未搭配檢索的 LLM</strong><span class="divider">｜</span>問題 → 模型運用訓練時學到的知識 → 回答</li>
+      <li data-field="body"><strong class="label">RAG</strong><span class="divider">｜</span>問題 → 從外部知識庫找相關資料 → 模型依問題與資料回答</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-llm-limits">S01 §1</a>
+      <a data-field="citation" href="wiki.html#concepts-llm-limits">S04「Why is Retrieval-Augmented Generation important?」</a>
+      <a data-field="citation" href="wiki.html#concepts-rag">S02 §II-A</a>
+    </div>
+  </section>
+  <section data-slide="5" class="flow" aria-labelledby="title-5" hidden>
+    <h2 id="title-5" tabindex="-1" data-field="title">RAG 完整運作流程</h2>
+    <ol class="body">
+      <li data-field="body"><strong class="label">建立索引（向量式流程）</strong><span class="divider">｜</span>外部文件 → 視需求切分並向量化 → 可搜尋的索引</li>
+      <li data-field="body"><strong class="label">檢索（Retrieval）</strong><span class="divider">｜</span>按問題搜尋索引，取回候選片段。</li>
+      <li data-field="body"><strong class="label">增強（Augmentation）</strong><span class="divider">｜</span>把選出的片段和問題放進模型輸入。</li>
+      <li data-field="body"><strong class="label">生成（Generation）</strong><span class="divider">｜</span>模型依據輸入撰寫回答。</li>
+      <li data-field="body"><strong class="label">維護</strong><span class="divider">｜</span>外部文件有變更時，同步更新索引。</li>
+    </ol>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-flow">S02 §II-A</a>
+      <a data-field="citation" href="wiki.html#concepts-flow">S03「The integration layer」</a>
+      <a data-field="citation" href="wiki.html#concepts-flow">S03「The generator」</a>
+      <a data-field="citation" href="wiki.html#concepts-flow">S04「Update external data」</a>
+    </div>
+  </section>
+  <section data-slide="6" class="compare" aria-labelledby="title-6" hidden>
+    <h2 id="title-6" tabindex="-1" data-field="title">文件切分與向量化</h2>
+    <ul class="body">
+      <li data-field="body"><strong class="label">文件切分（Chunking）</strong><span class="divider">｜</span>把長文件分成可獨立搜尋的片段。片段太短可能失去前後文，太長可能混入無關資訊。</li>
+      <li data-field="body"><strong class="label">向量化（Embedding）</strong><span class="divider">｜</span>用一組數值表示內容，讓系統比較相似度。教學例子中，向量搜尋可將「年度休假餘額」列為「剩幾天特休？」的可能相關片段。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-chunking">S02 §III-B.1</a>
+      <a data-field="citation" href="wiki.html#concepts-embedding">S05「Solving query understanding challenges」</a>
+      <a data-field="citation" href="wiki.html#concepts-embedding">S03「The retriever」</a>
+    </div>
+  </section>
+  <section data-slide="7" class="compare" aria-labelledby="title-7" hidden>
+    <h2 id="title-7" tabindex="-1" data-field="title">檢索與答案生成</h2>
+    <ul class="body">
+      <li data-field="body"><strong class="label">檢索</strong><span class="divider">｜</span>向量檢索可按相似度取前 k 筆（Top-k）。需要時可重新排序（Reranking），讓較相關的片段排在前面。</li>
+      <li data-field="body"><strong class="label">生成</strong><span class="divider">｜</span>模型讀取問題與選出的片段後撰寫答案。應用可附上來源，讓讀者回查。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-retrieval">S02 §§II-A、IV-A.1</a>
+      <a data-field="citation" href="wiki.html#concepts-generation">S04「Enhanced user trust」</a>
+      <a data-field="citation" href="wiki.html#concepts-generation">S03「The integration layer」與「The generator」</a>
+    </div>
+  </section>
+  <section data-slide="8" class="compare" aria-labelledby="title-8" hidden>
+    <h2 id="title-8" tabindex="-1" data-field="title">RAG 應用案例</h2>
+    <ul class="body">
+      <li data-field="body"><strong class="label">內部人資問答</strong><span class="divider">｜</span>查找休假政策與使用者有權查閱的個人紀錄，再交給模型整理。</li>
+      <li data-field="body"><strong class="label">客服知識助理</strong><span class="divider">｜</span>查找產品說明與支援政策，再由模型整理成回覆。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-applications">S04「Retrieve relevant information」與「More developer control」</a>
+      <a data-field="citation" href="wiki.html#concepts-applications">S03「Specialized chatbots and virtual assistants」</a>
+    </div>
+  </section>
+  <section data-slide="9" class="list" aria-labelledby="title-9" hidden>
+    <h2 id="title-9" tabindex="-1" data-field="title">RAG 的優點與限制</h2>
+    <ul class="body">
+      <li data-field="body"><strong class="label">可追溯</strong><span class="divider">｜</span>應用可附來源，讓讀者查核答案。</li>
+      <li data-field="body"><strong class="label">檢索限制</strong><span class="divider">｜</span>系統可能漏掉證據，也可能取回冗餘、錯誤或互相矛盾的片段。</li>
+      <li data-field="body"><strong class="label">生成限制</strong><span class="divider">｜</span>回答中的主張可能缺乏片段支持，需逐一確認。</li>
+      <li data-field="body"><strong class="label">資料維護</strong><span class="divider">｜</span>文件更新時要維護索引。</li>
+      <li data-field="body"><strong class="label">存取與效能</strong><span class="divider">｜</span>私人文件須限制存取，並在搜尋深度與速度之間取捨。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-generation">S04「Enhanced user trust」</a>
+      <a data-field="citation" href="wiki.html#concepts-generation">S03「The integration layer」與「The generator」</a>
+      <a data-field="citation" href="wiki.html#concepts-limits">S02 §§III-B、VII-B</a>
+      <a data-field="citation" href="wiki.html#concepts-limits">S02 §VI-C.1</a>
+      <a data-field="citation" href="wiki.html#concepts-flow">S04「Update external data」</a>
+      <a data-field="citation" href="wiki.html#concepts-limits">S05「The challenges of RAG」</a>
+    </div>
+  </section>
+  <section data-slide="10" class="summary" aria-labelledby="title-10" hidden>
+    <h2 id="title-10" tabindex="-1" data-field="title">學習總結與參考資料</h2>
+    <ul class="body">
+      <li data-field="body">先準備可搜尋的索引，再用問題找回相關片段。</li>
+      <li data-field="body">把挑選出的片段和問題交給模型。</li>
+      <li data-field="body">讀完答案，再回查哪些證據支持它。</li>
+    </ul>
+    <div class="references" aria-label="來源與 Wiki 連結">
+      <a data-field="citation" href="wiki.html#concepts-flow">S02 §II-A</a>
+      <a data-field="citation" href="wiki.html#concepts-flow">S03「The integration layer」</a>
+      <a data-field="citation" href="wiki.html#concepts-limits">S02 §VI-C.1</a>
+      <a data-field="citation" href="wiki.html#sources-S01">S01 · Lewis 等人的 RAG 原始論文</a>
+      <a data-field="citation" href="wiki.html#sources-S02">S02 · Gao 等人的 RAG 綜述</a>
+      <a data-field="citation" href="wiki.html#sources-S03">S03 · IBM Think 的 RAG 入門</a>
+      <a data-field="citation" href="wiki.html#sources-S04">S04 · AWS 的 RAG 入門</a>
+      <a data-field="citation" href="wiki.html#sources-S05">S05 · Microsoft Learn 的 RAG 指南</a>
+    </div>
+  </section>
+  </main>
+  <nav class="controls" aria-label="簡報切換">
+    <button id="prev" type="button" disabled>← 上一頁</button>
+    <output id="counter" aria-live="polite">1 / 10</output>
+    <button id="next" type="button">下一頁 →</button>
+  </nav>
+</div>
+<script>
+const slides = Array.from(document.querySelectorAll('[data-slide]'));
+const previous = document.querySelector('#prev');
+const next = document.querySelector('#next');
+const counter = document.querySelector('#counter');
+let current = 0;
+
+function show(index) {
+  if (index < 0 || index >= slides.length) return;
+  slides[current].hidden = true;
+  current = index;
+  slides[current].hidden = false;
+  counter.textContent = (current + 1) + ' / ' + slides.length;
+  previous.disabled = current === 0;
+  next.disabled = current === slides.length - 1;
+  slides[current].querySelector('[data-field="title"]').focus({ preventScroll: true });
+  window.scrollTo(0, 0);
+}
+
+previous.addEventListener('click', () => show(current - 1));
+next.addEventListener('click', () => show(current + 1));
+window.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    show(current + (event.key === 'ArrowRight' ? 1 : -1));
+  }
+});
+</script>
+</body>
+</html>

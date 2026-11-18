@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow 流程與執行紀錄</title>
+<style>:root{font:1.05rem/1.75 system-ui,"Microsoft JhengHei",sans-serif;color:#172c3d;background:#f2f6f8}
+body{margin:0 auto;max-width:64rem;padding:clamp(1rem,5vw,4rem)}
+h1{font-size:clamp(1.8rem,5vw,3.1rem);line-height:1.2;max-width:25ch}
+h2{line-height:1.3}a{color:#075b65;text-underline-offset:.2em}
+main>section{border-top:1px solid #b7c9d2;padding:.6rem 0}
+.flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem}
+.flow li{padding:.6rem .8rem;border-left:.2rem solid #18828a;background:#e1eef1}
+@media(max-width:40rem){.flow{grid-template-columns:1fr}}</style>
+</head>
+<body>
+<nav><a href="index.html">專案首頁</a></nav>
+<main>
+<h1>Workflow 流程與執行紀錄</h1>
+<section>
+<h2>簡報製作流程</h2>
+<ol class="flow">
+<li>N1 查詢 Wiki →</li><li>N2 檢查覆蓋率 →</li><li>N3 建立證據卡 →</li>
+<li>N4 建立大綱 →</li><li>N5 撰寫逐頁稿 →</li><li>N6 覆核引用與忠實度 →</li>
+<li>N7 生成 HTML →</li><li>N8 檢查瀏覽器 →</li><li>N9 交件與紀錄</li>
+</ol>
+<p>覆蓋不足退回 N1，Wiki 無法補足即暫停。N6 的稿件問題退回 N5，證據問題退回 N3。N8 的排版問題退回 N7，文字過多退回 N5。每個失敗節點最多修正三輪。</p>
+<p><a href="workflow/workflow.md">完整設計與執行指令</a> · <a href="workflow/sources.md">Wiki 覆蓋率</a> · <a href="workflow/outline.md">十頁大綱</a></p>
+</section>
+<section id="results">
+<h2>實際執行與反思</h2>
+<p>獨立複審確認 10 頁。驗證腳本確認逐頁稿與 HTML 一致、36 處引用可追溯。Edge 在三種視窗尺寸逐頁檢查版面與切換，共 30 次通過。</p>
+<p>獨立覆核在 N6 找出需收窄的說法與待補的原文定位，退回 N3 與 N5 修正。提前檢查每張證據卡的主張範圍及章節定位，可以在撰寫逐頁稿前攔下這類問題。</p>
+<p><a href="workflow/report.md">完整節點紀錄、重跑結果與反思</a></p>
+</section>
+</main>
+</body>
+</html>
